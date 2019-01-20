@@ -1,7 +1,7 @@
 use regex::Regex;
 use std::borrow::Cow;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{Read, Write};
 use std::path::Path;
 use std::{env, process};
 
@@ -34,6 +34,7 @@ impl<'a> Text<'a> {
         result
     }
 
+    /// Fill the form with input.
     fn fill_form(&mut self, form: &Form, replace_text: &str) {
         self.input = Cow::from(self.input.replace(&form.form, replace_text));
     }
@@ -47,6 +48,7 @@ struct Form {
 }
 
 impl Form {
+    /// Create `Form`.
     fn new(name: String, form: String) -> Form {
         Form { name, form }
     }
@@ -55,21 +57,40 @@ impl Form {
 /// Show usage.
 fn usage() {
     println!("USAGE");
-    println!("    fill INPUT");
+    println!("    fill INPUT OUTPUT");
 }
 
-fn show<P: AsRef<Path>>(path: P) {
-    let input = File::open(path).unwrap();
-    let buf = BufReader::new(&input);
+/// Fill the text interactively.
+fn fill<P: AsRef<Path>>(src_path: P, dst_path: P) {
+    let mut src = File::open(src_path).unwrap();
+    let input = &mut String::new();
+    src.read_to_string(input).unwrap();
 
-    for l in buf.lines() {
-        println!("{}", l.unwrap());
+    let mut text = Text::new(input);
+    let forms = text.get_forms();
+
+    let stdin = std::io::stdin();
+
+    for form in forms {
+        print!("{}: ", form.name);
+        std::io::stdout().flush().unwrap();
+
+        let replace_text = &mut String::new();
+        stdin.read_line(replace_text).unwrap();
+
+        let len = replace_text.len();
+        replace_text.truncate(len - 1);
+
+        text.fill_form(&form, replace_text);
     }
+
+    let mut dst = File::create(dst_path).unwrap();
+    dst.write(text.input.as_bytes()).unwrap();
 }
 
 fn main() {
-    if let Some(file_path) = env::args().nth(1) {
-        show(file_path);
+    if let (Some(src_path), Some(dst_path)) = (env::args().nth(1), env::args().nth(2)) {
+        fill(src_path, dst_path);
     } else {
         usage();
         process::exit(1);
