@@ -3,7 +3,8 @@ use std::borrow::Cow;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
-use std::{env, process};
+
+use clap::{App, Arg};
 
 /// Input text.
 struct Text<'a> {
@@ -54,12 +55,6 @@ impl Form {
     }
 }
 
-/// Show usage.
-fn usage() {
-    println!("USAGE");
-    println!("    fill INPUT OUTPUT");
-}
-
 /// Fill the text interactively.
 fn fill<P: AsRef<Path>>(src_path: P, dst_path: P) {
     let mut src = File::open(src_path).unwrap();
@@ -89,14 +84,27 @@ fn fill<P: AsRef<Path>>(src_path: P, dst_path: P) {
 }
 
 fn main() {
-    if let (Some(src_path), Some(dst_path)) = (env::args().nth(1), env::args().nth(2)) {
-        fill(src_path, dst_path);
-    } else {
-        usage();
-        process::exit(1);
-    }
+    let matches = App::new("fill")
+        .version(clap::crate_version!())
+        .about("Just a file filler.")
+        .arg(
+            Arg::with_name("template")
+                .required(true)
+                .index(1)
+                .help("Input template file"),
+        )
+        .arg(
+            Arg::with_name("destination")
+                .required(true)
+                .index(2)
+                .help("Save location of the result"),
+        )
+        .get_matches();
 
-    process::exit(0);
+    fill(
+        matches.value_of("template").unwrap(),
+        matches.value_of("destination").unwrap(),
+    );
 }
 
 #[cfg(test)]
