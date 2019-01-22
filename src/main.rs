@@ -99,12 +99,23 @@ fn main() {
                 .index(2)
                 .help("Save location of the result"),
         )
+        .arg(
+            Arg::with_name("force")
+                .long("force")
+                .short("f")
+                .takes_value(false)
+                .help("Overwrite file if file exists in save location"),
+        )
         .get_matches();
 
-    fill(
-        matches.value_of("template").unwrap(),
-        matches.value_of("destination").unwrap(),
-    );
+    let dest = Path::new(matches.value_of("destination").unwrap());
+    if !matches.is_present("force") && dest.exists() {
+        eprintln!("A file exists in the destination.");
+        eprintln!("Use --force for overwrite");
+        std::process::exit(1);
+    }
+
+    fill(Path::new(matches.value_of("template").unwrap()), dest);
 }
 
 #[cfg(test)]
